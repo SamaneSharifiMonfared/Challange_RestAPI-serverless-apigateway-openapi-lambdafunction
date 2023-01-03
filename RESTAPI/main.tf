@@ -39,10 +39,14 @@ resource "aws_lambda_function" "lambda" {
 
 }
 
+# start of configuration for api gateway
 resource "aws_apigatewayv2_api" "lambda-api" {
-  name        = "v2-http-api"
+  body = "${file("${path.module}/api.yaml")}"
+  name        = "API_AGENCY"
   protocol_type = "HTTP"
 }
+
+
 
 resource "aws_apigatewayv2_stage" "lambda-stage" {
   api_id = aws_apigatewayv2_api.lambda-api.id
@@ -77,4 +81,60 @@ resource "aws_lambda_permission" "api-gw" {
     source_arn = "${aws_apigatewayv2_api.lambda-api.execution_arn}/*/*/*"
 
 }
+
+
+
+# clockwatch
+
+resource "aws_api_gateway_account" "demo" {
+  cloudwatch_role_arn = aws_iam_role.cloudwatch.arn
+}
+
+resource "aws_iam_role" "cloudwatch" {
+  name = "api_gateway_cloudwatch_global"
+
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "",
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "apigateway.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_iam_role_policy" "cloudwatch" {
+  name = "default"
+  role = aws_iam_role.cloudwatch.id
+
+  policy = <<EOF
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:DescribeLogGroups",
+                "logs:DescribeLogStreams",
+                "logs:PutLogEvents",
+                "logs:GetLogEvents",
+                "logs:FilterLogEvents"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+EOF
+}
+
+
 
